@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ValuationPro - MVP</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- jsPDF and html2canvas for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Lucide Icons (using cdnjs as a reliable CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.368.0/lucide.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Tooltip Styles */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+            border-bottom: 1px dotted #334155; /* slate-700 */
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 280px;
+            background-color: #334155; /* slate-700 */
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 50;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -140px; /* Half of the width */
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.8rem;
+            line-height: 1.3;
+            font-weight: 500;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #334155 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+
+        .nav-link {
+            transition: all 0.2s;
+        }
+
+        .nav-link.active {
+            background-color: #0ea5e9;
+            color: white;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <!-- Sidebar/Navigation -->
+        <nav class="bg-white shadow-lg md:w-64 flex-shrink-0">
+            <div class="flex items-center justify-center p-4 border-b">
+                <i data-lucide="bar-chart-2" class="text-brand-600"></i>
+                <h1 class="text-2xl font-bold text-brand-700 ml-2">ValuationPro</h1>
+            </div>
+            <ul id="main-nav" class="p-2 space-y-1">
+                <li><a href="#dashboard" class="nav-link flex items-center p-3 rounded-lg hover:bg-brand-50 active"><i data-lucide="layout-dashboard" class="mr-3 h-5 w-5"></i>Dashboard</a></li>
+                <li><a href="#data-input" class="nav-link flex items-center p-3 rounded-lg hover:bg-brand-50"><i data-lucide="file-spreadsheet" class="mr-3 h-5 w-5"></i>Dados Financeiros</a></li>
+                <li><a href="#ratios" class="nav-link flex items-center p-3 rounded-lg hover:bg-brand-50"><i data-lucide="pie-chart" class="mr-3 h-5 w-5"></i>Índices Chave</a></li>
+                <li><a href="#qualitative" class="nav-link flex items-center p-3 rounded-lg hover:bg-brand-50"><i data-lucide="clipboard-check" class="mr-3 h-5 w-5"></i>Análise Qualitativa</a></li>
+                <li><a href="#valuation" class="nav-link flex items-center p-3 rounded-lg hover:bg-brand-50"><i data-lucide="calculator" class="mr-3 h-5 w-5"></i>Valuation</a></li>
+                <li><a href="#report" class="nav-link flex items-center p-3 rounded-lg hover:bg-brand-50"><i data-lucide="file-text" class="mr-3 h-5 w-5"></i>Relatório e Exportação</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+            
+            <!-- Company Header (visible when a company is loaded) -->
+            <div id="company-header" class="hidden mb-6 p-4 bg-white rounded-lg shadow flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-700" id="current-company-name"></h2>
+                    <p class="text-sm text-gray-500">Análise em andamento. Salvo localmente.</p>
+                </div>
+                <button id="save-company-btn" class="bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 flex items-center">
+                    <i data-lucide="save" class="mr-2 h-4 w-4"></i> Salvar
+                </button>
+            </div>
+
+
+            <!-- Dashboard Page -->
+            <div id="dashboard" class="page active">
+                <h1 class="text-3xl font-bold mb-6">Dashboard Pessoal</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="company-list">
+                    <!-- Company cards will be dynamically inserted here -->
+                </div>
+                <div class="mt-8 flex items-center gap-4 flex-wrap">
+                    <button id="new-analysis-btn" class="bg-brand-600 text-white px-6 py-3 rounded-lg hover:bg-brand-700 text-lg flex items-center">
+                        <i data-lucide="plus-circle" class="mr-2"></i> Iniciar Nova Análise
+                    </button>
+                    <button id="delete-all-btn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-base flex items-center">
+                        <i data-lucide="trash-2" class="mr-2 h-5 w-5"></i> Excluir Todas as Análises
+                    </button>
+                </div>
+            </div>
+
+            <!-- Data Input Page -->
+            <div id="data-input" class="page">
+                <h1 class="text-3xl font-bold mb-2">Entrada de Dados Financeiros</h1>
+                <p class="mb-6 text-gray-500">Insira os dados dos últimos 3 anos para a análise.</p>
+                <form id="financial-data-form" class="space-y-8">
+                    <!-- General Info -->
+                    <div>
+                        <h2 class="text-xl font-semibold mb-4 border-b pb-2">Informações Gerais</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                             <input type="text" data-field="companyName" placeholder="Nome da Empresa" class="p-2 border rounded-lg" required>
+                             <input type="text" data-field="companyTicker" placeholder="Ticker (ex: AAPL)" class="p-2 border rounded-lg">
+                             <input type="number" data-field="sharesOutstanding" placeholder="Ações em Circulação (Milhões)" class="p-2 border rounded-lg">
+                             <input type="number" data-field="marketCap" placeholder="Valor de Mercado (Milhões)" class="p-2 border rounded-lg">
+                             <input type="number" step="0.01" data-field="dividendPerShare" placeholder="Dividendo por Ação (Ano Atual)" class="p-2 border rounded-lg">
+                        </div>
+                    </div>
+                    
+                    <!-- Dynamic Table for Financials -->
+                    <div id="financial-tables-container" class="space-y-8"></div>
+
+                </form>
+            </div>
+
+            <!-- Ratios Page -->
+            <div id="ratios" class="page">
+                <h1 class="text-3xl font-bold mb-6">Análise de Índices Chave</h1>
+                <div id="ratios-content" class="space-y-8">
+                    <!-- Ratio sections will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <!-- Qualitative Analysis Page -->
+            <div id="qualitative" class="page">
+                <h1 class="text-3xl font-bold mb-6">Análise Qualitativa Simplificada</h1>
+                <form id="qualitative-form" class="space-y-8">
+                    <!-- Sections will be populated by JS -->
+                </form>
+            </div>
+
+            <!-- Valuation Page -->
+            <div id="valuation" class="page">
+                <h1 class="text-3xl font-bold mb-6">Métodos de Avaliação</h1>
+                <div id="valuation-content" class="space-y-8">
+                     <!-- Valuation methods will be inserted here -->
+                </div>
+            </div>
+            
+            <!-- Report & Export Page -->
+            <div id="report" class="page">
+                 <h1 class="text-3xl font-bold mb-2">Relatório e Exportação</h1>
+                 <p class="mb-6 text-gray-500">Exporte seus dados e o relatório final da análise.</p>
+                 <div class="flex items-center space-x-4 mb-8">
+                    <button id="export-csv-btn" class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 flex items-center"><i data-lucide="file-spreadsheet" class="mr-2"></i>Exportar para CSV</button>
+                    <button id="export-pdf-btn" class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 flex items-center"><i data-lucide="file-type-2" class="mr-2"></i>Gerar Relatório PDF</button>
+                 </div>
+                 
+                 <div id="pdf-report-container" class="bg-white p-8 rounded-lg shadow-md">
+                     <!-- The content for the PDF will be a mirror of other sections -->
+                     <h2 id="report-company-name" class="text-4xl font-extrabold text-center mb-2"></h2>
+                     <p class="text-center text-gray-500 mb-8">Relatório de Avaliação - Gerado em <span id="report-date"></span></p>
+                     
+                     <div id="report-content" class="space-y-10">
+                         <!-- Report content gets dynamically added here -->
+                     </div>
+                 </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Custom Modal -->
+    <div id="custom-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md text-center">
+            <p id="modal-message" class="text-lg mb-6"></p>
+            <div id="modal-buttons" class="flex justify-center space-x-4">
+                <!-- Buttons will be injected here by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+
+<script>
+// Main Application Logic
+document.addEventListener('DOMContentLoaded', () => {
+
+    const App = {
+        // STATE
+        state: {
+            currentCompanyId: null,
+            companies: {}, // { "companyId": { ...data } }
+        },
+
+        // DOM ELEMENTS
+        dom: {
+            navLinks: document.querySelectorAll('.nav-link'),
+            pages: document.querySelectorAll('.page'),
+            companyHeader: document.getElementById('company-header'),
+            currentCompanyName: document.getElementById('current-company-name'),
+            saveCompanyBtn: document.getElementById('save-company-btn'),
+            
+            // Dashboard
+            companyList: document.getElementById('company-list'),
+            newAnalysisBtn: document.getElementById('new-analysis-btn'),
+            deleteAllBtn: document.getElementById('delete-all-btn'),
+            
+            // Data Input
+            financialDataForm: document.getElementById('financial-data-form'),
+            financialTablesContainer: document.getElementById('financial-tables-container'),
+
+            // Ratios
+            ratiosContent: document.getElementById('ratios-content'),
+            
+            // Qualitative
+            qualitativeForm: document.getElementById('qualitative-form'),
+
+            // Valuation
+            valuationContent: document.getElementById('valuation-content'),
+
+            // Report
+            exportCsvBtn: document.getElementById('export-csv-btn'),
+            exportPdfBtn: document.getElementById('export-pdf-btn'),
+            pdfReportContainer: document.getElementById('pdf-report-container'),
+            reportContent: document.getElementById('report-content'),
+            reportCompanyName: document.getElementById('report-company-name'),
+            reportDate: document.getElementById('report-date'),
+
+            // Modal
+            customModal: document.getElementById('custom-modal'),
+            modalMessage: document.getElementById('modal-message'),
+            modalButtons: document.getElementById('modal-buttons'),
+        },
+        
+        // DATA STRUCTURE & DEFAULTS
+        dataStructure: {
+            financials: {
+                // Balance Sheet - Assets
+                fixedAssets: [0, 0, 0],
+                intangiblesGoodwill: [0, 0, 0],
+                inventories: [0, 0, 0],
+                accountsReceivable: [0, 0, 0],
+                cashAndEquivalents: [0, 0, 0],
+                // Balance Sheet - Liabilities & Equity
+                shareholdersEquity: [0, 0, 0],
+                shortTermDebt: [0, 0, 0],
+                longTermDebt: [0, 0, 0],
+                provisions: [0, 0, 0],
+                accountsPayable: [0, 0, 0],
+                // Income Statement
+                netSales: [0, 0, 0],
+                cogs: [0, 0, 0],
+                sga: [0, 0, 0],
+                depreciationAmortization: [0, 0, 0],
+                rd: [0, 0, 0],
+                interestExpense: [0, 0, 0],
+                taxes: [0, 0, 0],
+                // Cash Flow Statement
+                cfo: [0, 0, 0],
+                capex: [0, 0, 0],
+                cfi: [0, 0, 0],
+                cff: [0, 0, 0],
+                dividendsPaid: [0, 0, 0],
+                shareRepurchases: [0, 0, 0]
+            },
+            qualitative: {}, // Will be populated from definitions
+            valuationAssumptions: {
+                // Multiples
+                basePE: 15, stabilityAdj: 0, marketPosAdj: 0, roeAdj: 0, growthAdj: 0,
+                // DCF
+                salesGrowth: [5, 4, 3, 2, 2],
+                ebitMargin: 10,
+                taxRate: 25,
+                capexAsPercentOfSales: 3,
+                depAsPercentOfSales: 2.5,
+                nwcAsPercentOfSales: 15,
+                riskFreeRate: 4,
+                equityRiskPremium: 5,
+                terminalGrowthRate: 2,
+                // New for advanced models
+                costOfDebt: 5,
+                dividendGrowthRate: 2,
+            }
+        },
+        
+        // DEFINITIONS (for dynamic rendering)
+        definitions: {
+            financials: {
+                "Balanço Patrimonial - Ativos": {
+                    fixedAssets: "Imobilizado",
+                    intangiblesGoodwill: "Intangíveis & Goodwill",
+                    inventories: "Estoques",
+                    accountsReceivable: "Contas a Receber",
+                    cashAndEquivalents: "Caixa e Equivalentes",
+                },
+                "Balanço Patrimonial - Passivos e PL": {
+                    shareholdersEquity: "Patrimônio Líquido",
+                    shortTermDebt: "Empréstimos de Curto Prazo",
+                    longTermDebt: "Empréstimos de Longo Prazo",
+                    provisions: "Provisões",
+                    accountsPayable: "Contas a Pagar",
+                },
+                "Demonstrativo de Resultados": {
+                    netSales: "Vendas/Receita Líquida",
+                    cogs: "Custo dos Produtos Vendidos (CPV)",
+                    sga: "Despesas de Vendas, Gerais e Adm. (SG&A)",
+                    depreciationAmortization: "Depreciação e Amortização",
+                    rd: "Pesquisa e Desenvolvimento (P&D)",
+                    interestExpense: "Resultado Financeiro (Juros)",
+                    taxes: "Impostos",
+                },
+                "Demonstrativo de Fluxo de Caixa": {
+                    cfo: "Fluxo de Caixa Operacional (FCO)",
+                    capex: "Despesas de Capital (CAPEX)",
+                    cfi: "Fluxo de Caixa de Investimento (FCI)",
+                    cff: "Fluxo de Caixa de Financiamento (FCF)",
+                    dividendsPaid: "Dividendos Pagos",
+                    shareRepurchases: "Recompra de Ações",
+                }
+            },
+            qualitative: {
+                "Círculo de Competência": {
+                    q1: "Eu entendo como a empresa gera receita e lucro?",
+                    q2: "O modelo de negócio é simples e consistente ao longo do tempo?",
+                    q3: "Consigo prever com razoável confiança o desempenho da empresa nos próximos 5-10 anos?",
+                },
+                "Modelo de Negócio": {
+                    q4: "A empresa vende produtos de marca de consumo rápido?",
+                    q5: "A empresa vende produtos essenciais com demanda inelástica?",
+                    q6: "A empresa possui uma marca premium que lhe confere poder de precificação?",
+                    q7: "O modelo de negócio é altamente escalável (baixo custo marginal)?",
+                },
+                "Estratégia Competitiva (Porter)": {
+                    q8: "A rivalidade entre os concorrentes no setor é baixa?",
+                    q9: "Existem altas barreiras à entrada de novos concorrentes?",
+                    q10: "O poder de barganha dos fornecedores é baixo?",
+                    q11: "O poder de barganha dos clientes é baixo?",
+                    q12: "A ameaça de produtos ou serviços substitutos é baixa?",
+                },
+                "Gestão": {
+                    q13: "A gestão tem um histórico de alocação de capital inteligente (recompras, dividendos, aquisições)?",
+                    q14: "A remuneração da gestão está alinhada com os interesses dos acionistas de longo prazo?",
+                    q15: "A comunicação da gestão com o mercado é transparente e honesta?",
+                }
+            },
+            tooltip: {
+                // Ratios
+                'Return on Equity (ROE)': 'Mede a rentabilidade da empresa em relação ao seu patrimônio líquido. Fórmula: (Lucro Líquido / Patrimônio Líquido Médio). Um ROE consistentemente alto é um forte indicador de qualidade.',
+                'Margem Líquida': 'Indica a porcentagem de receita que se transforma em lucro líquido. Fórmula: (Lucro Líquido / Vendas). Margens altas e estáveis sugerem poder de precificação e controle de custos.',
+                'Margem EBIT': 'Mede a lucratividade operacional da empresa antes dos juros e impostos. Fórmula: (EBIT / Vendas). É útil para comparar empresas com diferentes estruturas de capital e alíquotas de impostos.',
+                'Margem EBITDA': 'Similar à Margem EBIT, mas também exclui a depreciação e amortização. Útil para analisar empresas de capital intensivo.',
+                'Return on Assets (ROA)': 'Mede a eficiência com que a empresa utiliza seus ativos para gerar lucro. Fórmula: (Lucro Líquido + Juros) / Ativo Total Médio.',
+                'Return on Capital Employed (ROCE)': 'Mede o retorno que a empresa gera sobre todo o capital investido (patrimônio + dívida). Fórmula: (EBIT / Capital Empregado Médio). Considerado por muitos um dos melhores indicadores de rentabilidade.',
+                'Margem de Fluxo de Caixa Operacional': 'Mede a capacidade da empresa de transformar vendas em caixa. Fórmula: (FCO / Vendas). Muitas vezes mais importante que a margem de lucro, pois caixa é rei.',
+                'Índice de Capital Próprio': 'Mostra a proporção dos ativos da empresa que é financiada pelo capital dos acionistas. Fórmula: (Patrimônio Líquido / Ativo Total). Valores mais altos indicam menor endividamento.',
+                'Alavancagem (Gearing)': 'Compara a dívida líquida (Dívida Total - Caixa) com o patrimônio líquido. Um indicador-chave do endividamento da empresa.',
+                'Dívida Líquida / EBITDA': 'Mede quantos anos a empresa levaria para pagar sua dívida líquida usando seu EBITDA. Valores abaixo de 3x são geralmente considerados saudáveis.',
+                'Índice CAPEX / FCO': 'Mostra que porcentagem do caixa gerado nas operações é reinvestido em ativos (CAPEX). Valores altos podem indicar crescimento ou alta necessidade de manutenção.',
+                'Liquidez Corrente': 'Mede a capacidade da empresa de pagar suas obrigações de curto prazo. Fórmula: (Ativo Circulante / Passivo Circulante).',
+                'Liquidez Seca': 'Similar à liquidez corrente, mas exclui os estoques do cálculo, por serem menos líquidos.',
+                'Ciclo de Conversão de Caixa (CCC)': 'Mede o tempo (em dias) que a empresa leva para converter seus investimentos em estoque e outras entradas em caixa. Quanto menor, melhor.',
+
+                // Valuation
+                'Múltiplos (P/L e outros)': 'Avalia a empresa comparando seu valor de mercado com métricas financeiras como lucro (P/L), vendas (P/S) ou valor da firma (EV/EBITDA).',
+                'DCF - Fluxo de Caixa do Acionista (FCFE)': 'Modelo que projeta os fluxos de caixa futuros disponíveis para os acionistas e os desconta a valor presente usando o Custo do Capital Próprio (Ke) como taxa de desconto.',
+                'DCF - Fluxo de Caixa da Firma (FCFF)': 'Modelo que projeta os fluxos de caixa gerados para todos os provedores de capital (acionistas e credores) e os desconta usando o Custo Médio Ponderado de Capital (WACC).',
+                'Modelo de Desconto de Dividendos (DDM)': 'Avalia a empresa com base no valor presente de seus futuros pagamentos de dividendos. Mais adequado para empresas maduras e estáveis.',
+                
+                // Assumptions
+                'P/L Base': 'Um múltiplo Preço/Lucro inicial para uma empresa média no mercado. 15 é um valor comumente usado como ponto de partida.',
+                'Ajuste Estabilidade': 'Adicione ou subtraia pontos com base na estabilidade e previsibilidade dos lucros da empresa.',
+                'Ajuste Posição Mercado': 'Adicione pontos para empresas com fortes vantagens competitivas e liderança de mercado.',
+                'Ajuste ROE': 'Adicione pontos para empresas com Retorno sobre o Patrimônio Líquido (ROE) consistentemente alto.',
+                'Ajuste Crescimento': 'Adicione pontos se as perspectivas de crescimento futuro da empresa forem acima da média do mercado.',
+                'Taxa Livre de Risco (%)': 'O retorno de um investimento considerado sem risco, geralmente títulos do governo de longo prazo (ex: Tesouro Selic no Brasil ou T-Bills nos EUA).',
+                'Prêmio de Risco (%)': 'O retorno adicional que os investidores exigem para investir no mercado de ações em vez de um ativo livre de risco. Historicamente, fica entre 4% e 6%.',
+                'Cresc. Perpétuo (%)': 'A taxa de crescimento que se assume para os fluxos de caixa da empresa na perpetuidade. Deve ser conservadora, geralmente próxima ou abaixo do crescimento do PIB de longo prazo.',
+                'Imposto (%)': 'A alíquota de imposto de renda corporativo efetiva que a empresa paga.',
+                'Cresc. Vendas (5a, %)': 'Sua estimativa de crescimento anual das vendas para os próximos 5 anos. Insira valores separados por vírgula (ex: 10,8,6,5,5).',
+                'Margem EBIT (%)': 'Sua estimativa para a margem operacional da empresa durante o período de projeção.',
+                'CAPEX (% Vendas)': 'O investimento em ativos fixos (CAPEX) projetado como uma porcentagem das vendas. Reflete o quanto a empresa precisa reinvestir para crescer.',
+                'Depreciação (% Vendas)': 'A despesa de depreciação projetada como uma porcentagem das vendas.',
+                'Capital Giro (% Vendas)': 'A necessidade de capital de giro (Contas a Receber + Estoques - Contas a Pagar) como uma porcentagem das vendas.',
+                'Custo da Dívida (%)': 'A taxa de juros média que a empresa paga sobre suas dívidas. Usado no cálculo do WACC.',
+                'Cresc. Dividendo (%)': 'A taxa de crescimento anual que você espera para os dividendos da empresa na perpetuidade. Usado no Modelo de Desconto de Dividendos (DDM).',
+            }
+        },
+
+        // INITIALIZATION
+        init() {
+            this.loadState();
+            this.addEventListeners();
+            this.renderDashboard();
+            this.navigateTo('dashboard');
+            this.renderFinancialsTable();
+            this.renderQualitativeForm();
+            this.renderIcons(); // Initial icon render
+        },
+
+        // STATE MANAGEMENT
+        loadState() {
+            const savedState = localStorage.getItem('valuationProState');
+            if (savedState) {
+                this.state = JSON.parse(savedState);
+            }
+        },
+
+        saveState() {
+            localStorage.setItem('valuationProState', JSON.stringify(this.state));
+            console.log('State saved.');
+        },
+        
+        renderIcons() {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        },
+
+        // MODAL HANDLING
+        showModal(message, type = 'alert', onConfirm = null) {
+            this.dom.modalMessage.textContent = message;
+            this.dom.modalButtons.innerHTML = ''; // Clear previous buttons
+
+            if (type === 'confirm') {
+                const confirmBtn = document.createElement('button');
+                confirmBtn.textContent = 'Confirmar';
+                confirmBtn.className = 'bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700';
+                confirmBtn.onclick = () => {
+                    this.hideModal();
+                    if (onConfirm) onConfirm();
+                };
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = 'Cancelar';
+                cancelBtn.className = 'bg-gray-300 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-400';
+                cancelBtn.onclick = () => this.hideModal();
+
+                this.dom.modalButtons.appendChild(cancelBtn);
+                this.dom.modalButtons.appendChild(confirmBtn);
+
+            } else { // 'alert' type
+                const okBtn = document.createElement('button');
+                okBtn.textContent = 'OK';
+                okBtn.className = 'bg-brand-600 text-white px-8 py-2 rounded-lg hover:bg-brand-700';
+                okBtn.onclick = () => this.hideModal();
+                this.dom.modalButtons.appendChild(okBtn);
+            }
+            this.dom.customModal.classList.remove('hidden');
+        },
+
+        hideModal() {
+            this.dom.customModal.classList.add('hidden');
+        },
+
+
+        // NAVIGATION
+        navigateTo(pageId) {
+            this.dom.pages.forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId)?.classList.add('active');
+
+            this.dom.navLinks.forEach(l => l.classList.remove('active'));
+            document.querySelector(`.nav-link[href="#${pageId}"]`)?.classList.add('active');
+            
+            if (this.state.currentCompanyId) {
+                this.dom.companyHeader.classList.remove('hidden');
+                this.dom.currentCompanyName.textContent = this.state.companies[this.state.currentCompanyId]?.companyName || 'Nova Análise';
+                // Trigger renders for the new page
+                if (pageId === 'ratios') this.renderRatios();
+                if (pageId === 'valuation') this.renderValuation();
+                if (pageId === 'report') this.renderReport();
+            } else {
+                this.dom.companyHeader.classList.add('hidden');
+            }
+        },
+        
+        // EVENT LISTENERS
+        addEventListeners() {
+            this.dom.navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (!this.state.currentCompanyId && link.getAttribute('href') !== '#dashboard') {
+                        this.showModal('Por favor, inicie ou selecione uma análise primeiro.');
+                        return;
+                    }
+                    this.navigateTo(link.getAttribute('href').substring(1));
+                });
+            });
+
+            this.dom.newAnalysisBtn.addEventListener('click', () => this.startNewAnalysis());
+
+            this.dom.deleteAllBtn.addEventListener('click', () => {
+                 this.showModal('Tem certeza que deseja excluir TODAS as análises? Esta ação não pode ser desfeita.', 'confirm', () => {
+                    this.deleteAllCompanies();
+                });
+            });
+
+            this.dom.companyList.addEventListener('click', (e) => {
+                const target = e.target.closest('[data-company-id]');
+                if (target) {
+                    const action = e.target.closest('[data-action]')?.dataset.action;
+                    const companyId = target.dataset.companyId;
+                    if (action === 'delete') {
+                        this.showModal('Tem certeza que deseja excluir esta análise?', 'confirm', () => {
+                            this.deleteCompany(companyId);
+                        });
+                    } else {
+                        this.loadCompany(companyId);
+                    }
+                }
+            });
+
+            this.dom.financialDataForm.addEventListener('input', (e) => this.handleFormInput(e));
+            this.dom.qualitativeForm.addEventListener('input', (e) => this.handleQualitativeInput(e));
+            
+            this.dom.saveCompanyBtn.addEventListener('click', () => {
+                this.saveState();
+                this.showModal('Análise salva com sucesso!');
+                this.renderDashboard();
+            });
+
+            this.dom.exportCsvBtn.addEventListener('click', () => this.exportToCSV());
+            this.dom.exportPdfBtn.addEventListener('click', () => this.exportToPDF());
+        },
+
+        // CORE ACTIONS
+        startNewAnalysis() {
+            const newId = `company_${new Date().getTime()}`;
+            this.state.currentCompanyId = newId;
+            this.state.companies[newId] = {
+                id: newId,
+                companyName: 'Nova Empresa',
+                companyTicker: '',
+                sharesOutstanding: 0,
+                marketCap: 0,
+                dividendPerShare: 0,
+                ...JSON.parse(JSON.stringify(this.dataStructure)) // Deep copy
+            };
+            this.populateForms(newId);
+            this.navigateTo('data-input');
+        },
+
+        loadCompany(companyId) {
+            this.state.currentCompanyId = companyId;
+            this.populateForms(companyId);
+            this.navigateTo('data-input');
+        },
+
+        deleteCompany(companyId) {
+            delete this.state.companies[companyId];
+            if (this.state.currentCompanyId === companyId) {
+                this.state.currentCompanyId = null;
+            }
+            this.saveState();
+            this.renderDashboard();
+            if (!this.state.currentCompanyId) {
+                this.navigateTo('dashboard');
+            }
+        },
+        
+        deleteAllCompanies() {
+            this.state.companies = {};
+            this.state.currentCompanyId = null;
+            this.saveState();
+            this.renderDashboard();
+            this.navigateTo('dashboard');
+            this.showModal('Todas as análises foram excluídas.');
+        },
+
+        // FORM HANDLING
+        populateForms(companyId) {
+            const companyData = this.state.companies[companyId];
+            if (!companyData) return;
+
+            // General Info
+            this.dom.financialDataForm.querySelector('[data-field="companyName"]').value = companyData.companyName;
+            this.dom.financialDataForm.querySelector('[data-field="companyTicker"]').value = companyData.companyTicker;
+            this.dom.financialDataForm.querySelector('[data-field="sharesOutstanding"]').value = companyData.sharesOutstanding;
+            this.dom.financialDataForm.querySelector('[data-field="marketCap"]').value = companyData.marketCap;
+            this.dom.financialDataForm.querySelector('[data-field="dividendPerShare"]').value = companyData.dividendPerShare;
+            
+            // Financials
+            for (const key in companyData.financials) {
+                for (let i = 0; i < 3; i++) {
+                    const input = this.dom.financialDataForm.querySelector(`[data-field="${key}"][data-year-index="${i}"]`);
+                    if (input) input.value = companyData.financials[key][i];
+                }
+            }
+            
+            // Qualitative
+            for (const key in companyData.qualitative) {
+                const input = this.dom.qualitativeForm.querySelector(`[name="${key}"]`);
+                if (input) {
+                    if (input.type === 'checkbox') input.checked = companyData.qualitative[key];
+                    else input.value = companyData.qualitative[key];
+                }
+            }
+        },
+
+        handleFormInput(e) {
+            if (!this.state.currentCompanyId) return;
+            const companyData = this.state.companies[this.state.currentCompanyId];
+            const field = e.target.dataset.field;
+            const yearIndex = e.target.dataset.yearIndex;
+            
+            if (yearIndex !== undefined) {
+                companyData.financials[field][parseInt(yearIndex)] = parseFloat(e.target.value) || 0;
+            } else {
+                 if (e.target.type === 'number') {
+                    companyData[field] = parseFloat(e.target.value) || 0;
+                 } else {
+                    companyData[field] = e.target.value;
+                 }
+            }
+        },
+        
+        handleQualitativeInput(e) {
+            if (!this.state.currentCompanyId) return;
+            const companyData = this.state.companies[this.state.currentCompanyId];
+            const name = e.target.name;
+            const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+            companyData.qualitative[name] = value;
+        },
+
+        // DYNAMIC RENDERING
+        renderDashboard() {
+            this.dom.companyList.innerHTML = '';
+            const companies = Object.values(this.state.companies);
+            if (companies.length === 0) {
+                this.dom.companyList.innerHTML = `<p class="text-gray-500 col-span-full">Nenhuma análise encontrada. Clique em "Iniciar Nova Análise" para começar.</p>`;
+                return;
+            }
+            companies.forEach(company => {
+                // Quick calculation for display
+                const lastYearNetIncome = this.calculations.getNetIncome(company.financials)[2];
+                const lastYearEquity = company.financials.shareholdersEquity[2];
+                const roe = (lastYearEquity > 0 ? (lastYearNetIncome / lastYearEquity) * 100 : 0).toFixed(2) + '%';
+                
+                const card = `
+                    <div class="bg-white p-5 rounded-lg shadow hover:shadow-xl transition-shadow cursor-pointer" data-company-id="${company.id}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">${company.companyName}</h3>
+                                <p class="text-sm text-brand-600 font-semibold">${company.companyTicker || 'Sem Ticker'}</p>
+                            </div>
+                            <button data-action="delete" class="text-gray-400 hover:text-red-500 p-1"><i data-lucide="trash-2" class="h-5 w-5"></i></button>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between text-sm">
+                        <span class="text-gray-500">Último ROE:</span>
+                        <span class="font-semibold ${parseFloat(roe) > 15 ? 'text-green-600' : 'text-orange-600'}">${roe}</span>
+                        </div>
+                    </div>
+                `;
+                this.dom.companyList.insertAdjacentHTML('beforeend', card);
+            });
+            this.renderIcons();
+        },
+        
+        renderFinancialsTable() {
+            this.dom.financialTablesContainer.innerHTML = '';
+            const currentYear = new Date().getFullYear();
+            const years = [currentYear - 3, currentYear - 2, currentYear - 1];
+
+            for (const sectionTitle in this.definitions.financials) {
+                let tableHTML = `
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3">${sectionTitle}</h3>
+                        <div class="overflow-x-auto bg-white rounded-lg shadow">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-gray-100 text-gray-600 uppercase">
+                                    <tr>
+                                        <th class="px-4 py-3">Métrica</th>
+                                        ${years.map(y => `<th class="px-4 py-3 text-right">${y}</th>`).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                for (const key in this.definitions.financials[sectionTitle]) {
+                    const label = this.definitions.financials[sectionTitle][key];
+                    tableHTML += `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="px-4 py-2 font-medium">${label}</td>
+                            ${years.map((_, i) => `
+                                <td class="px-4 py-2">
+                                    <input type="number" step="0.01" data-field="${key}" data-year-index="${i}" class="w-full text-right bg-transparent border-b-2 border-gray-200 focus:outline-none focus:border-brand-500 transition">
+                                </td>
+                            `).join('')}
+                        </tr>
+                    `;
+                }
+                tableHTML += `</tbody></table></div></div>`;
+                this.dom.financialTablesContainer.insertAdjacentHTML('beforeend', tableHTML);
+            }
+        },
+
+        renderQualitativeForm() {
+            this.dom.qualitativeForm.innerHTML = '';
+            for (const sectionTitle in this.definitions.qualitative) {
+                let sectionHTML = `
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-xl font-semibold mb-4 border-b pb-2">${sectionTitle}</h3>
+                        <div class="space-y-4">
+                `;
+                for (const key in this.definitions.qualitative[sectionTitle]) {
+                    const question = this.definitions.qualitative[sectionTitle][key];
+                    sectionHTML += `
+                        <label class="flex items-center space-x-3">
+                            <input type="checkbox" name="${key}" class="h-5 w-5 rounded text-brand-600 focus:ring-brand-500">
+                            <span class="text-gray-700">${question}</span>
+                        </label>
+                    `;
+                    // Initialize this field in the data structure
+                    this.dataStructure.qualitative[key] = false;
+                }
+                sectionHTML += `</div></div>`;
+                this.dom.qualitativeForm.insertAdjacentHTML('beforeend', sectionHTML);
+            }
+        },
+
+        renderRatios() {
+            if (!this.state.currentCompanyId) return;
+            const company = this.state.companies[this.state.currentCompanyId];
+            const f = company.financials;
+            const calc = this.calculations;
+
+            const ratiosData = {
+                "Rentabilidade e Retorno": [
+                    { name: "Return on Equity (ROE)", values: calc.getROE(f), unit: '%' },
+                    { name: "Margem Líquida", values: calc.getNetProfitMargin(f), unit: '%' },
+                    { name: "Margem EBIT", values: calc.getEBITMargin(f), unit: '%' },
+                    { name: "Margem EBITDA", values: calc.getEBITDAMargin(f), unit: '%' },
+                    { name: "Return on Assets (ROA)", values: calc.getROA(f), unit: '%' },
+                    { name: "Return on Capital Employed (ROCE)", values: calc.getROCE(f), unit: '%' },
+                    { name: "Margem de Fluxo de Caixa Operacional", values: calc.getOperatingCashFlowMargin(f), unit: '%' },
+                ],
+                "Estabilidade Financeira": [
+                    { name: "Índice de Capital Próprio", values: calc.getEquityRatio(f), unit: '%' },
+                    { name: "Alavancagem (Gearing)", values: calc.getGearingRatio(f), unit: '' },
+                    { name: "Dívida Líquida / EBITDA", values: calc.getNetDebtToEBITDA(f), unit: 'x' },
+                    { name: "Índice CAPEX / FCO", values: calc.getCapexRatio(f), unit: '%' },
+                    { name: "Liquidez Corrente", values: calc.getCurrentRatio(f), unit: 'x' },
+                    { name: "Liquidez Seca", values: calc.getQuickRatio(f), unit: 'x' },
+                ],
+                "Gestão de Capital de Giro": [
+                    { name: "Ciclo de Conversão de Caixa (CCC)", values: calc.getCashConversionCycle(f), unit: ' dias' },
+                ]
+            };
+            
+            this.dom.ratiosContent.innerHTML = '';
+            for (const section in ratiosData) {
+                const chartId = `chart-${section.replace(/\s/g, '')}`;
+                let sectionHTML = `
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h2 class="text-2xl font-bold mb-4">${section}</h2>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead><tr class="border-b"><th class="py-2 text-left">Índice</th><th class="py-2 text-right">Ano -2</th><th class="py-2 text-right">Ano -1</th><th class="py-2 text-right">Ano Atual</th></tr></thead>
+                                    <tbody>
+                                    ${ratiosData[section].map(r => `
+                                        <tr class="border-b">
+                                            <td class="py-2 font-medium">${this.createTooltip(r.name, this.definitions.tooltip[r.name])}</td>
+                                            ${r.values.map(v => `<td class="py-2 text-right">${isNaN(v) ? '-' : v.toFixed(2) + r.unit}</td>`).join('')}
+                                        </tr>
+                                    `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div>
+                                <canvas id="${chartId}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                this.dom.ratiosContent.insertAdjacentHTML('beforeend', sectionHTML);
+                
+                // Create Chart
+                const ctx = document.getElementById(chartId).getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ratiosData[section].map(r => r.name),
+                        datasets: [
+                        { label: 'Ano -2', data: ratiosData[section].map(r => r.values[0]), backgroundColor: 'rgba(54, 162, 235, 0.6)' },
+                        { label: 'Ano -1', data: ratiosData[section].map(r => r.values[1]), backgroundColor: 'rgba(75, 192, 192, 0.6)' },
+                        { label: 'Ano Atual', data: ratiosData[section].map(r => r.values[2]), backgroundColor: 'rgba(255, 159, 64, 0.6)' }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        },
+
+        renderValuation() {
+            if (!this.state.currentCompanyId) return;
+            const company = this.state.companies[this.state.currentCompanyId];
+            const { financials: f, valuationAssumptions: a, sharesOutstanding, marketCap, dividendPerShare } = company;
+            const calc = this.calculations;
+
+            const dcfFcfeResult = calc.getDCF_FCFE_Value(f, a, sharesOutstanding);
+            const dcfFcffResult = calc.getDCF_FCFF_Value(f, a, sharesOutstanding, marketCap);
+            const ddmResult = calc.getDDMValue(a, dividendPerShare);
+            
+            const evToEbitda = calc.getEV_EBITDA(f, marketCap);
+            const psRatio = calc.getPS(f, marketCap);
+            const fairPE = calc.getFairPE(a);
+            const peTargetPrice = fairPE * calc.getEPS(f, sharesOutstanding)[2];
+
+            this.dom.valuationContent.innerHTML = `
+                ${this.createValuationCard('Múltiplos (P/L e outros)', `
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
+                        <div><p class="text-sm text-gray-500">${this.createTooltip('P/L Justo', this.definitions.tooltip['P/L Justo'])}</p><p class="text-2xl font-bold">${fairPE.toFixed(2)}x</p></div>
+                        <div><p class="text-sm text-gray-500">P/S</p><p class="text-2xl font-bold">${psRatio.toFixed(2)}x</p></div>
+                        <div><p class="text-sm text-gray-500">EV/EBITDA</p><p class="text-2xl font-bold">${evToEbitda.toFixed(2)}x</p></div>
+                        <div class="md:col-span-3"><p class="text-sm text-gray-500">Preço Alvo (P/L Justo)</p><p class="text-2xl font-bold text-brand-600">$${peTargetPrice.toFixed(2)}</p></div>
+                    </div>
+                `, this.definitions.tooltip['Múltiplos (P/L e outros)'])}
+                ${this.createValuationCard('DCF - Fluxo de Caixa do Acionista (FCFE)', `
+                     <div class="text-center"><p class="text-sm text-gray-500">Valor Intrínseco / Ação</p><p class="text-4xl font-extrabold text-brand-600">$${dcfFcfeResult.valuePerShare.toFixed(2)}</p></div>
+                     <div class="text-xs text-center mt-2"><p>Custo do Capital Próprio (Ke): ${dcfFcfeResult.costOfEquity.toFixed(2)}%</p></div>
+                `, this.definitions.tooltip['DCF - Fluxo de Caixa do Acionista (FCFE)'])}
+                ${this.createValuationCard('DCF - Fluxo de Caixa da Firma (FCFF)', 
+                    marketCap > 0 ? `
+                        <div class="text-center"><p class="text-sm text-gray-500">Valor Intrínseco / Ação</p><p class="text-4xl font-extrabold text-brand-600">$${dcfFcffResult.valuePerShare.toFixed(2)}</p></div>
+                        <div class="text-xs text-center mt-2"><p>WACC: ${dcfFcffResult.wacc.toFixed(2)}% | Custo da Dívida (Kd): ${a.costOfDebt.toFixed(2)}%</p></div>
+                    ` : `<p class="text-center text-gray-500">Insira o Valor de Mercado na aba "Dados Financeiros" para calcular.</p>`,
+                    this.definitions.tooltip['DCF - Fluxo de Caixa da Firma (FCFF)']
+                )}
+                 ${this.createValuationCard('Modelo de Desconto de Dividendos (DDM)', 
+                    dividendPerShare > 0 ? `
+                        <div class="text-center"><p class="text-sm text-gray-500">Valor Intrínseco / Ação</p><p class="text-4xl font-extrabold text-brand-600">$${ddmResult.valuePerShare.toFixed(2)}</p></div>
+                        <div class="text-xs text-center mt-2"><p>Dividendo por Ação: $${dividendPerShare.toFixed(2)} | Crescimento (g): ${a.dividendGrowthRate.toFixed(2)}%</p></div>
+                    ` : `<p class="text-center text-gray-500">Insira o Dividendo por Ação na aba "Dados Financeiros" para calcular.</p>`,
+                    this.definitions.tooltip['Modelo de Desconto de Dividendos (DDM)']
+                )}
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-bold mb-4">Ajuste de Premissas</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4 text-sm">
+                        <div><h3 class="font-semibold mb-2">Múltiplos (P/L Justo)</h3>
+                           ${this.createAssumptionInput('basePE', 'P/L Base', a.basePE, this.definitions.tooltip['P/L Base'])}
+                           ${this.createAssumptionInput('stabilityAdj', 'Ajuste Estabilidade', a.stabilityAdj, this.definitions.tooltip['Ajuste Estabilidade'])}
+                           ${this.createAssumptionInput('marketPosAdj', 'Ajuste Posição Mercado', a.marketPosAdj, this.definitions.tooltip['Ajuste Posição Mercado'])}
+                           ${this.createAssumptionInput('roeAdj', 'Ajuste ROE', a.roeAdj, this.definitions.tooltip['Ajuste ROE'])}
+                           ${this.createAssumptionInput('growthAdj', 'Ajuste Crescimento', a.growthAdj, this.definitions.tooltip['Ajuste Crescimento'])}
+                        </div>
+                        <div><h3 class="font-semibold mb-2">Geral</h3>
+                           ${this.createAssumptionInput('riskFreeRate', 'Taxa Livre de Risco (%)', a.riskFreeRate, this.definitions.tooltip['Taxa Livre de Risco (%)'])}
+                           ${this.createAssumptionInput('equityRiskPremium', 'Prêmio de Risco (%)', a.equityRiskPremium, this.definitions.tooltip['Prêmio de Risco (%)'])}
+                           ${this.createAssumptionInput('terminalGrowthRate', 'Cresc. Perpétuo (%)', a.terminalGrowthRate, this.definitions.tooltip['Cresc. Perpétuo (%)'])}
+                           ${this.createAssumptionInput('taxRate', 'Imposto (%)', a.taxRate, this.definitions.tooltip['Imposto (%)'])}
+                        </div>
+                        <div><h3 class="font-semibold mb-2">DCF (FCFF/FCFE)</h3>
+                           ${this.createAssumptionInput('salesGrowth', 'Cresc. Vendas (5a, %)', a.salesGrowth.join(','), this.definitions.tooltip['Cresc. Vendas (5a, %)'])}
+                           ${this.createAssumptionInput('ebitMargin', 'Margem EBIT (%)', a.ebitMargin, this.definitions.tooltip['Margem EBIT (%)'])}
+                           ${this.createAssumptionInput('capexAsPercentOfSales', 'CAPEX (% Vendas)', a.capexAsPercentOfSales, this.definitions.tooltip['CAPEX (% Vendas)'])}
+                           ${this.createAssumptionInput('depAsPercentOfSales', 'Depreciação (% Vendas)', a.depAsPercentOfSales, this.definitions.tooltip['Depreciação (% Vendas)'])}
+                           ${this.createAssumptionInput('nwcAsPercentOfSales', 'Capital Giro (% Vendas)', a.nwcAsPercentOfSales, this.definitions.tooltip['Capital Giro (% Vendas)'])}
+                           ${this.createAssumptionInput('costOfDebt', 'Custo da Dívida (%)', a.costOfDebt, this.definitions.tooltip['Custo da Dívida (%)'])}
+                        </div>
+                        <div><h3 class="font-semibold mb-2">DDM</h3>
+                            ${this.createAssumptionInput('dividendGrowthRate', 'Cresc. Dividendo (%)', a.dividendGrowthRate, this.definitions.tooltip['Cresc. Dividendo (%)'])}
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Add event listeners for assumption inputs
+            this.dom.valuationContent.querySelectorAll('[data-assumption]').forEach(input => {
+                input.addEventListener('change', e => {
+                    const key = e.target.dataset.assumption;
+                    let value = e.target.value;
+                    if (key === 'salesGrowth') value = value.split(',').map(v => parseFloat(v.trim()));
+                    else value = parseFloat(value);
+                    company.valuationAssumptions[key] = value;
+                    this.renderValuation(); // Re-render on change
+                });
+            });
+        },
+
+        createValuationCard(title, content, tooltipText) {
+            const titleHTML = this.createTooltip(title, tooltipText);
+            return `<div class="bg-white p-6 rounded-lg shadow"><h2 class="text-xl font-bold mb-4">${titleHTML}</h2>${content}</div>`;
+        },
+        createAssumptionInput(key, label, value, tooltipText) {
+            const labelHTML = this.createTooltip(label, tooltipText);
+            return `<div class="grid grid-cols-2 items-center gap-2 mb-2"><label class="text-gray-600">${labelHTML}:</label><input type="${typeof value === 'string' ? 'text' : 'number'}" step="0.1" data-assumption="${key}" value="${value}" class="p-1 border rounded-md text-right"></div>`;
+        },
+        createTooltip(text, tooltipText) {
+            if (!tooltipText) return text;
+            return `<span class="tooltip">${text}<span class="tooltiptext">${tooltipText}</span></span>`;
+        },
+        
+        renderReport() {
+            if (!this.state.currentCompanyId) return;
+            const company = this.state.companies[this.state.currentCompanyId];
+
+            this.dom.reportCompanyName.textContent = company.companyName;
+            this.dom.reportDate.textContent = new Date().toLocaleDateString('pt-BR');
+            
+            // Create a temporary div to render components and get their HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.className = 'space-y-10';
+            
+            this.renderRatios();
+            this.renderValuation();
+
+            tempDiv.innerHTML = `
+                <div><h2 class="text-3xl font-bold mb-4 border-b-2 border-brand-500 pb-2">1. Análise de Índices</h2>${this.dom.ratiosContent.innerHTML}</div>
+                <div><h2 class="text-3xl font-bold mb-4 border-b-2 border-brand-500 pb-2">2. Avaliação de Valor</h2>${this.dom.valuationContent.innerHTML}</div>
+            `;
+            this.dom.reportContent.innerHTML = tempDiv.innerHTML;
+        },
+
+        // EXPORT FUNCTIONS
+        exportToCSV() {
+            if (!this.state.currentCompanyId) {
+                this.showModal('Nenhuma empresa selecionada para exportar.');
+                return;
+            }
+            const company = this.state.companies[this.state.currentCompanyId];
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            csvContent += "Metrica,Ano -2,Ano -1,Ano Atual\n";
+
+            for (const section in this.definitions.financials) {
+                csvContent += `"${section}",,,\n`;
+                for (const key in this.definitions.financials[section]) {
+                    const label = this.definitions.financials[section][key];
+                    const values = company.financials[key];
+                    csvContent += `"${label}",${values[0]},${values[1]},${values[2]}\n`;
+                }
+            }
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `${company.companyName}_financials.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        },
+
+        exportToPDF() {
+            const reportElement = this.dom.pdfReportContainer;
+            const companyName = this.state.companies[this.state.currentCompanyId]?.companyName || 'Relatorio';
+            
+            html2canvas(reportElement, { scale: 2 }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                const ratio = canvasWidth / canvasHeight;
+                const imgHeight = pdfWidth / ratio;
+                
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                heightLeft -= pdfHeight;
+
+                while (heightLeft > 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                    heightLeft -= pdfHeight;
+                }
+
+                pdf.save(`${companyName}_valuation_report.pdf`);
+            });
+        },
+
+
+        // CALCULATIONS (namespace for all formulas)
+        calculations: {
+            _getAvg(arr, idx1, idx2) { return (arr[idx1] + arr[idx2]) / 2; },
+            _safeDiv(num, den) { return den != 0 ? num / den : 0; },
+            
+            getNetIncome(f) { return f.netSales.map((s, i) => s - f.cogs[i] - f.sga[i] - f.rd[i] - f.interestExpense[i] - f.taxes[i]); },
+            getEBIT(f) { return f.netSales.map((s, i) => s - f.cogs[i] - f.sga[i] - f.rd[i]); },
+            getEBITDA(f) { const ebit = this.getEBIT(f); return ebit.map((e, i) => e + f.depreciationAmortization[i]); },
+            getTotalAssets(f) { return f.fixedAssets.map((fa, i) => fa + f.intangiblesGoodwill[i] + f.inventories[i] + f.accountsReceivable[i] + f.cashAndEquivalents[i]); },
+            getTotalDebt(f) { return f.shortTermDebt.map((d, i) => d + f.longTermDebt[i]); },
+            getNetDebt(f) { const totalDebt = this.getTotalDebt(f); return totalDebt.map((d, i) => d - f.cashAndEquivalents[i]); },
+            getCapitalEmployed(f) { const totalAssets = this.getTotalAssets(f); return totalAssets.map((a, i) => a - f.accountsPayable[i]); },
+            getWorkingCapital(f) { return f.accountsReceivable.map((ar, i) => ar + f.inventories[i] - f.accountsPayable[i]); },
+            getEPS(f, shares) { const netIncome = this.getNetIncome(f); return netIncome.map(ni => this._safeDiv(ni, shares)); },
+            
+            getROE(f) { const ni = this.getNetIncome(f); return ni.map((n, i) => i === 0 ? this._safeDiv(n, f.shareholdersEquity[i]) * 100 : this._safeDiv(n, this._getAvg(f.shareholdersEquity, i-1, i)) * 100); },
+            getNetProfitMargin(f) { const ni = this.getNetIncome(f); return ni.map((n, i) => this._safeDiv(n, f.netSales[i]) * 100); },
+            getEBITMargin(f) { const ebit = this.getEBIT(f); return ebit.map((e, i) => this._safeDiv(e, f.netSales[i]) * 100); },
+            getEBITDAMargin(f) { const ebitda = this.getEBITDA(f); return ebitda.map((e, i) => this._safeDiv(e, f.netSales[i]) * 100); },
+            getROA(f) { const ni = this.getNetIncome(f); const totalAssets = this.getTotalAssets(f); return ni.map((n, i) => i === 0 ? this._safeDiv(n + f.interestExpense[i], totalAssets[i]) * 100 : this._safeDiv(n + f.interestExpense[i], this._getAvg(totalAssets, i-1, i)) * 100); },
+            getROCE(f) { const ebit = this.getEBIT(f); const capitalEmployed = this.getCapitalEmployed(f); return ebit.map((e, i) => i === 0 ? this._safeDiv(e, capitalEmployed[i]) * 100 : this._safeDiv(e, this._getAvg(capitalEmployed, i-1, i)) * 100); },
+            getOperatingCashFlowMargin(f) { return f.cfo.map((c, i) => this._safeDiv(c, f.netSales[i]) * 100); },
+            getEquityRatio(f) { const totalAssets = this.getTotalAssets(f); return f.shareholdersEquity.map((e, i) => this._safeDiv(e, totalAssets[i]) * 100); },
+            getGearingRatio(f) { const netDebt = this.getNetDebt(f); return netDebt.map((nd, i) => this._safeDiv(nd, f.shareholdersEquity[i])); },
+            getNetDebtToEBITDA(f) { const netDebt = this.getNetDebt(f); const ebitda = this.getEBITDA(f); return netDebt.map((nd, i) => this._safeDiv(nd, ebitda[i])); },
+            getCapexRatio(f) { return f.capex.map((c, i) => this._safeDiv(c, f.cfo[i]) * 100); },
+            getCurrentRatio(f) { return f.inventories.map((inv, i) => this._safeDiv(inv + f.accountsReceivable[i] + f.cashAndEquivalents[i], f.accountsPayable[i] + f.shortTermDebt[i])); },
+            getQuickRatio(f) { return f.accountsReceivable.map((ar, i) => this._safeDiv(ar + f.cashAndEquivalents[i], f.accountsPayable[i] + f.shortTermDebt[i])); },
+            getDSO(f) { return f.accountsReceivable.map((ar, i) => this._safeDiv(ar, f.netSales[i]) * 365); },
+            getDPO(f) { return f.accountsPayable.map((ap, i) => this._safeDiv(ap, f.cogs[i]) * 365); },
+            getInventoryDays(f) { return f.inventories.map((inv, i) => this._safeDiv(inv, f.cogs[i]) * 365); },
+            getCashConversionCycle(f) { const dso = this.getDSO(f); const dpo = this.getDPO(f); const dio = this.getInventoryDays(f); return dso.map((d, i) => d + dio[i] - dpo[i]); },
+            
+            getFairPE(a) {
+                return a.basePE + a.stabilityAdj + a.marketPosAdj + a.roeAdj + a.growthAdj;
+            },
+
+            _projectFC(f, a) {
+                const projections = [];
+                let lastSales = f.netSales[2];
+                let lastNWC = this.getWorkingCapital(f)[2];
+                for (let i = 0; i < 5; i++) {
+                    const sales = lastSales * (1 + a.salesGrowth[i] / 100);
+                    const ebit = sales * (a.ebitMargin / 100);
+                    const nopat = ebit * (1 - a.taxRate / 100);
+                    const dep = sales * (a.depAsPercentOfSales / 100);
+                    const capex = sales * (a.capexAsPercentOfSales / 100);
+                    const nwc = sales * (a.nwcAsPercentOfSales / 100);
+                    const deltaNWC = nwc - lastNWC;
+                    projections.push({ nopat, dep, capex, deltaNWC });
+                    lastSales = sales;
+                    lastNWC = nwc;
+                }
+                return projections;
+            },
+
+            getDCF_FCFE_Value(f, a, shares) {
+                const projections = this._projectFC(f, a);
+                const fcfe = projections.map(p => p.nopat + p.dep - p.capex - p.deltaNWC);
+                
+                const costOfEquity = a.riskFreeRate / 100 + a.equityRiskPremium / 100;
+                const terminalGrowthRate = a.terminalGrowthRate / 100;
+
+                if (costOfEquity <= terminalGrowthRate) return { equityValue: 0, valuePerShare: 0, costOfEquity: costOfEquity * 100 };
+
+                const terminalValue = (fcfe[4] * (1 + terminalGrowthRate)) / (costOfEquity - terminalGrowthRate);
+                
+                let pvOfFcfe = 0;
+                for (let i = 0; i < 5; i++) { pvOfFcfe += fcfe[i] / Math.pow(1 + costOfEquity, i + 1); }
+                const pvOfTerminalValue = terminalValue / Math.pow(1 + costOfEquity, 5);
+                const equityValue = pvOfFcfe + pvOfTerminalValue;
+
+                return { equityValue, valuePerShare: this._safeDiv(equityValue, shares), costOfEquity: costOfEquity*100 };
+            },
+            
+            getDCF_FCFF_Value(f, a, shares, marketCap) {
+                if (marketCap <= 0) return { equityValue: 0, valuePerShare: 0, wacc: 0 };
+                const totalDebt = this.getTotalDebt(f)[2];
+                const V = marketCap + totalDebt;
+                const E_V = this._safeDiv(marketCap, V);
+                const D_V = this._safeDiv(totalDebt, V);
+                const Ke = a.riskFreeRate / 100 + a.equityRiskPremium / 100;
+                const Kd = a.costOfDebt / 100;
+                const wacc = (E_V * Ke) + (D_V * Kd * (1 - a.taxRate / 100));
+
+                const projections = this._projectFC(f, a);
+                const fcff = projections.map(p => p.nopat + p.dep - p.capex - p.deltaNWC);
+                
+                const terminalGrowthRate = a.terminalGrowthRate / 100;
+                if (wacc <= terminalGrowthRate) return { equityValue: 0, valuePerShare: 0, wacc: wacc * 100 };
+
+                const terminalValue = (fcff[4] * (1 + terminalGrowthRate)) / (wacc - terminalGrowthRate);
+                
+                let pvOfFcff = 0;
+                for (let i = 0; i < 5; i++) { pvOfFcff += fcff[i] / Math.pow(1 + wacc, i + 1); }
+                const pvOfTerminalValue = terminalValue / Math.pow(1 + wacc, 5);
+
+                const enterpriseValue = pvOfFcff + pvOfTerminalValue;
+                const netDebt = this.getNetDebt(f)[2];
+                const equityValue = enterpriseValue - netDebt;
+                
+                return { equityValue, valuePerShare: this._safeDiv(equityValue, shares), wacc: wacc*100 };
+            },
+
+            getDDMValue(a, dividendPerShare) {
+                const d0 = dividendPerShare;
+                if (!d0 || d0 <= 0) return { valuePerShare: 0 };
+                const ke = a.riskFreeRate / 100 + a.equityRiskPremium / 100;
+                const g = a.dividendGrowthRate / 100;
+                const d1 = d0 * (1 + g);
+
+                if (ke <= g) return { valuePerShare: 0 };
+                
+                const valuePerShare = this._safeDiv(d1, ke - g);
+                return { valuePerShare };
+            },
+            
+            getEV_EBITDA(f, marketCap) {
+                if (marketCap <= 0) return 0;
+                const totalDebt = this.getTotalDebt(f)[2];
+                const cash = f.cashAndEquivalents[2];
+                const enterpriseValue = marketCap + totalDebt - cash;
+                const ebitda = this.getEBITDA(f)[2];
+                return this._safeDiv(enterpriseValue, ebitda);
+            },
+            
+            getPS(f, marketCap) {
+                if (marketCap <= 0) return 0;
+                const sales = f.netSales[2];
+                return this._safeDiv(marketCap, sales);
+            }
+        }
+    };
+    
+    App.init();
+});
+</script>
+
+</body>
+</html>
+
