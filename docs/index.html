@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ValuationPRO — Plataforma Profissional de Equity Valuation</title>
+  <meta
+    name="description"
+    content="Ferramenta institucional de Equity Valuation com DCF (FCFF e FCFE), CAPM/Hamada/WACC, Valor Terminal Value Driver, Reverse DCF, Sensibilidade 2D, Football Field, Comparáveis e DDM."
+  />
+  <script type="module" crossorigin src="./assets/index-fJy1lXEA.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/charts-ClpJTbeg.js">
+  <link rel="stylesheet" crossorigin href="./assets/index-BBSEsN0f.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegação principal">
+      <div class="sidebar-brand">
+        <div class="brand-mark">
+          <i data-lucide="bar-chart-2"></i>
+        </div>
+        <div>
+          <div class="brand-title">ValuationPRO</div>
+          <div class="brand-subtitle">Equity Research Suite</div>
+        </div>
+      </div>
+
+      <ul class="sidebar-nav">
+        <li>
+          <a href="#dashboard" class="nav-link active" data-page="dashboard">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Painel de Análises</span>
+          </a>
+        </li>
+        <li>
+          <a href="#data-input" class="nav-link" data-page="data-input">
+            <i data-lucide="file-spreadsheet"></i>
+            <span>Dados Financeiros</span>
+          </a>
+        </li>
+        <li>
+          <a href="#ratios" class="nav-link" data-page="ratios">
+            <i data-lucide="pie-chart"></i>
+            <span>Índices &amp; DuPont</span>
+          </a>
+        </li>
+        <li>
+          <a href="#qualitative" class="nav-link" data-page="qualitative">
+            <i data-lucide="clipboard-check"></i>
+            <span>Qualitativo &amp; Moat</span>
+          </a>
+        </li>
+        <li>
+          <a href="#valuation" class="nav-link" data-page="valuation">
+            <i data-lucide="calculator"></i>
+            <span>Valuation</span>
+          </a>
+        </li>
+        <li>
+          <a href="#report" class="nav-link" data-page="report">
+            <i data-lucide="file-text"></i>
+            <span>Relatório &amp; Exportar</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div><strong>ValuationPRO v2.0</strong></div>
+        <div>Damodaran • McKinsey • CFA</div>
+        <div>Armazenamento local seguro</div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <div id="company-banner" class="company-banner hidden">
+        <div class="company-banner-left">
+          <span id="banner-ticker" class="ticker-badge"></span>
+          <div>
+            <h2 id="banner-name" class="company-banner-title"></h2>
+            <div id="banner-meta" class="company-banner-meta"></div>
+          </div>
+        </div>
+        <div class="btn-group">
+          <span class="save-indicator">
+            <i data-lucide="check-circle-2" style="width:14px;height:14px;"></i>
+            Salvo automaticamente
+          </span>
+          <button id="banner-switch-btn" class="btn btn-secondary btn-sm" type="button">
+            <i data-lucide="arrow-left"></i> Trocar Empresa
+          </button>
+        </div>
+      </div>
+
+      <section id="dashboard" class="page active"></section>
+      <section id="data-input" class="page"></section>
+      <section id="ratios" class="page"></section>
+      <section id="qualitative" class="page"></section>
+      <section id="valuation" class="page"></section>
+      <section id="report" class="page"></section>
+    </main>
+  </div>
+
+  <!-- Accessible Modal -->
+  <div id="custom-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <h3 id="modal-title" class="modal-title">ValuationPRO</h3>
+      <p id="modal-message" class="modal-message"></p>
+      <div id="modal-actions" class="modal-actions"></div>
+    </div>
+  </div>
+
+</body>
+</html>

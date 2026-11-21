@@ -1,0 +1,25 @@
+{
+  "name": "valuation-pro",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Plataforma profissional de Equity Valuation (DCF FCFF/FCFE, WACC/CAPM, Valor Terminal Value Driver, Reverse DCF, Sensibilidade, Football Field, Comps, DDM e Narrative-to-Numbers).",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.7",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.2",
+    "lucide": "^0.468.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "vitest": "^2.1.8"
+  }
+}
